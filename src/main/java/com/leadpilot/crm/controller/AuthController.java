@@ -35,11 +35,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 @RequestMapping("/api/auth")
 @Validated
 @SecurityRequirement(name = "bearerAuth")
-@CrossOrigin(origins = {
-        "http://localhost:4200",
-        "http://127.0.0.1:4200",
-        "https://leadpilot-crmapp.netlify.app"
-})
 @Tag(
         name = "Authentication",
         description = "APIs for user authentication, logout, password management, and profile information."

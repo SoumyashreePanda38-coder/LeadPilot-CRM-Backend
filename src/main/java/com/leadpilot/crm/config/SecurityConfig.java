@@ -3,36 +3,25 @@ package com.leadpilot.crm.config;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import com.leadpilot.crm.security.CustomUserDetailsService;
 import com.leadpilot.crm.security.JwtAuthenticationEntryPoint;
 import com.leadpilot.crm.security.JwtAuthenticationFilter;
-
-/**
- * ==========================================================
- * Configuration : SecurityConfig
- *
- * Description :
- * Configures Spring Security for LeadPilot CRM.
- *
- * Responsibilities:
- * 1. Configure JWT Authentication
- * 2. Configure Public & Secured APIs
- * 3. Configure Authentication Provider
- * 4. Configure Password Encoder
- * 5. Register JWT Filter
- * ==========================================================
- */
 
 @Configuration
 @EnableMethodSecurity
@@ -47,27 +36,26 @@ public class SecurityConfig {
     @Autowired
     private CustomUserDetailsService customUserDetailsService;
 
-    /**
-     * ==========================================================
-     * Password Encoder
-     * ==========================================================
-     */
+
+    // ==========================================================
+    // Password Encoder
+    // ==========================================================
 
     @Bean
     PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
-    /**
-     * ==========================================================
-     * Authentication Provider
-     * ==========================================================
-     */
+
+    // ==========================================================
+    // Authentication Provider
+    // ==========================================================
 
     @Bean
     DaoAuthenticationProvider authenticationProvider() {
 
-        DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
+        DaoAuthenticationProvider provider =
+                new DaoAuthenticationProvider();
 
         provider.setUserDetailsService(customUserDetailsService);
         provider.setPasswordEncoder(passwordEncoder());
@@ -75,11 +63,10 @@ public class SecurityConfig {
         return provider;
     }
 
-    /**
-     * ==========================================================
-     * Authentication Manager
-     * ==========================================================
-     */
+
+    // ==========================================================
+    // Authentication Manager
+    // ==========================================================
 
     @Bean
     AuthenticationManager authenticationManager(
@@ -89,11 +76,10 @@ public class SecurityConfig {
         return configuration.getAuthenticationManager();
     }
 
-    /**
-     * ==========================================================
-     * Security Filter Chain
-     * ==========================================================
-     */
+
+    // ==========================================================
+    // Security Filter Chain
+    // ==========================================================
 
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http)
@@ -103,21 +89,35 @@ public class SecurityConfig {
 
                 // Disable CSRF
                 .csrf(csrf -> csrf.disable())
-                
+
+                // Enable CORS
                 .cors(cors -> {})
 
                 // Exception Handling
                 .exceptionHandling(exception -> exception
-                        .authenticationEntryPoint(jwtAuthenticationEntryPoint))
+                        .authenticationEntryPoint(
+                                jwtAuthenticationEntryPoint
+                        )
+                )
 
-                // Stateless Session
+                // Stateless JWT authentication
                 .sessionManagement(session -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                        .sessionCreationPolicy(
+                                SessionCreationPolicy.STATELESS
+                        )
+                )
 
-                // Authorization Rules
+                // Authorization
                 .authorizeHttpRequests(auth -> auth
 
-                        // Authentication APIs
+                        // IMPORTANT:
+                        // Allow browser CORS preflight requests
+                        .requestMatchers(
+                                org.springframework.http.HttpMethod.OPTIONS,
+                                "/**"
+                        ).permitAll()
+
+                        // Login must be public
                         .requestMatchers(
                                 "/api/auth/login"
                         ).permitAll()
@@ -129,23 +129,26 @@ public class SecurityConfig {
                                 "/v3/api-docs/**"
                         ).permitAll()
 
-                        // H2 Database (optional)
-                        .requestMatchers("/h2-console/**").permitAll()
+                        // H2
+                        .requestMatchers(
+                                "/h2-console/**"
+                        ).permitAll()
 
-                        // Everything else requires login
+                        // Everything else requires JWT
                         .anyRequest().authenticated()
-
                 )
 
                 // Authentication Provider
-                .authenticationProvider(authenticationProvider())
+                .authenticationProvider(
+                        authenticationProvider()
+                )
 
                 // JWT Filter
                 .addFilterBefore(
                         jwtAuthenticationFilter,
-                        UsernamePasswordAuthenticationFilter.class);
+                        UsernamePasswordAuthenticationFilter.class
+                );
 
         return http.build();
     }
-
 }
