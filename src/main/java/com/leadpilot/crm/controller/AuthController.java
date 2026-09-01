@@ -37,7 +37,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 @SecurityRequirement(name = "bearerAuth")
 @CrossOrigin(origins = {
         "http://localhost:4200",
-        "http://127.0.0.1:4200"
+        "http://127.0.0.1:4200",
+        "https://leadpilot-crmapp.netlify.app"
 })
 @Tag(
         name = "Authentication",

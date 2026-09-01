@@ -18,7 +18,8 @@ public class CorsConfig {
 
         configuration.setAllowedOrigins(List.of(
                 "http://localhost:4200",
-                "http://127.0.0.1:4200"
+                "http://127.0.0.1:4200",
+                "https://leadpilot-crmapp.netlify.app"
         ));
 
         configuration.setAllowedMethods(List.of(
