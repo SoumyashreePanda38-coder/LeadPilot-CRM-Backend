@@ -119,6 +119,7 @@ public class SecurityConfig {
 
                         // Login must be public
                         .requestMatchers(
+                        		 "/",
                                 "/api/auth/login"
                         ).permitAll()
 
