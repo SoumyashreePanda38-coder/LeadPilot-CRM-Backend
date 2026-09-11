@@ -110,32 +110,42 @@ public class SecurityConfig {
                 // Authorization
                 .authorizeHttpRequests(auth -> auth
 
-                        // IMPORTANT:
-                        // Allow browser CORS preflight requests
+                        // ==================================================
+                        // CORS Preflight
+                        // ==================================================
                         .requestMatchers(
                                 org.springframework.http.HttpMethod.OPTIONS,
                                 "/**"
                         ).permitAll()
 
-                        // Login must be public
+                        // ==================================================
+                        // PUBLIC AUTHENTICATION ENDPOINTS
+                        // ==================================================
                         .requestMatchers(
-                        		 "/",
-                                "/api/auth/login"
+                                "/",
+                                "/api/auth/login",
+                                "/api/auth/register"
                         ).permitAll()
 
+                        // ==================================================
                         // Swagger
+                        // ==================================================
                         .requestMatchers(
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
                                 "/v3/api-docs/**"
                         ).permitAll()
 
+                        // ==================================================
                         // H2
+                        // ==================================================
                         .requestMatchers(
                                 "/h2-console/**"
                         ).permitAll()
 
+                        // ==================================================
                         // Everything else requires JWT
+                        // ==================================================
                         .anyRequest().authenticated()
                 )
 
