@@ -14,17 +14,19 @@ import com.leadpilot.crm.entity.User;
  * Description :
  * Converts Reminder entities to DTOs and DTOs to entities.
  *
- * Responsibilities :
+ * IMPORTANT:
  *
- * - Convert ReminderRequest -> Reminder
- * - Convert Reminder -> ReminderResponse
- * - Update existing Reminder from ReminderRequest
+ * Automatic Follow-Up reminder creation is handled by
+ * ReminderService.
  *
- * Important :
+ * This mapper does NOT:
  *
- * - This mapper does NOT access repositories.
- * - CustomerLead, FollowUp and User relationships
- *   are resolved in the service layer.
+ * - Calculate reminder dates
+ * - Access repositories
+ * - Resolve database relationships
+ * - Create reminders
+ *
+ * Business logic remains in the service layer.
  *
  * ==========================================================
  */
@@ -35,19 +37,15 @@ public class ReminderMapper {
     // ==========================================================
 
     /**
-     * Converts ReminderRequest into a Reminder entity.
+     * Converts ReminderRequest into Reminder entity.
      *
      * Relationships are intentionally not resolved here.
-     * The service layer should fetch:
+     *
+     * The service layer resolves:
      *
      * - CustomerLead
      * - FollowUp
-     * - User
-     *
-     * and then set them on the Reminder entity.
-     *
-     * @param request reminder request DTO
-     * @return Reminder entity
+     * - Assigned User
      */
     public static Reminder toEntity(
             ReminderRequest request) {
@@ -56,10 +54,11 @@ public class ReminderMapper {
             return null;
         }
 
-        Reminder reminder = new Reminder();
+        Reminder reminder =
+                new Reminder();
 
         // ------------------------------------------------------
-        // Reminder Information
+        // Reminder information
         // ------------------------------------------------------
 
         reminder.setTitle(
@@ -74,8 +73,9 @@ public class ReminderMapper {
                 request.getReminderAt()
         );
 
+
         // ------------------------------------------------------
-        // Reminder State
+        // Reminder state
         // ------------------------------------------------------
 
         reminder.setRead(
@@ -90,16 +90,9 @@ public class ReminderMapper {
                 request.isDismissed()
         );
 
+
         // ------------------------------------------------------
-        // Relationships
-        //
-        // DO NOT resolve IDs here.
-        //
-        // Service layer should set:
-        //
-        // reminder.setCustomerLead(...)
-        // reminder.setFollowUp(...)
-        // reminder.setAssignedTo(...)
+        // Relationships are NOT resolved here.
         // ------------------------------------------------------
 
         return reminder;
@@ -110,12 +103,6 @@ public class ReminderMapper {
     // ENTITY -> RESPONSE DTO
     // ==========================================================
 
-    /**
-     * Converts Reminder entity into ReminderResponse DTO.
-     *
-     * @param reminder Reminder entity
-     * @return ReminderResponse DTO
-     */
     public static ReminderResponse toResponse(
             Reminder reminder) {
 
@@ -126,8 +113,9 @@ public class ReminderMapper {
         ReminderResponse response =
                 new ReminderResponse();
 
+
         // ------------------------------------------------------
-        // Primary Key
+        // Reminder ID
         // ------------------------------------------------------
 
         response.setReminderId(
@@ -136,7 +124,7 @@ public class ReminderMapper {
 
 
         // ------------------------------------------------------
-        // Customer Lead Information
+        // Customer Lead
         // ------------------------------------------------------
 
         CustomerLead customerLead =
@@ -155,7 +143,7 @@ public class ReminderMapper {
 
 
         // ------------------------------------------------------
-        // Follow-Up Information
+        // Follow-Up
         // ------------------------------------------------------
 
         FollowUp followUp =
@@ -174,7 +162,7 @@ public class ReminderMapper {
 
 
         // ------------------------------------------------------
-        // Assigned User Information
+        // Assigned User
         // ------------------------------------------------------
 
         User assignedTo =
@@ -193,7 +181,7 @@ public class ReminderMapper {
 
 
         // ------------------------------------------------------
-        // Reminder Information
+        // Reminder information
         // ------------------------------------------------------
 
         response.setTitle(
@@ -210,7 +198,7 @@ public class ReminderMapper {
 
 
         // ------------------------------------------------------
-        // Reminder State
+        // Reminder state
         // ------------------------------------------------------
 
         response.setRead(
@@ -227,7 +215,7 @@ public class ReminderMapper {
 
 
         // ------------------------------------------------------
-        // Notification Tracking
+        // Notification tracking
         // ------------------------------------------------------
 
         response.setNotificationSent(
@@ -240,7 +228,7 @@ public class ReminderMapper {
 
 
         // ------------------------------------------------------
-        // Completion Information
+        // Completion information
         // ------------------------------------------------------
 
         response.setCompletedAt(
@@ -287,7 +275,7 @@ public class ReminderMapper {
 
 
         // ------------------------------------------------------
-        // Audit Information
+        // Audit information
         // ------------------------------------------------------
 
         response.setCreatedAt(
@@ -308,30 +296,20 @@ public class ReminderMapper {
     // ==========================================================
 
     /**
-     * Updates an existing Reminder using ReminderRequest.
+     * Updates reminder fields from ReminderRequest.
      *
-     * Relationships are intentionally not changed here.
-     *
-     * The service layer should handle:
-     *
-     * - CustomerLead
-     * - FollowUp
-     * - Assigned User
-     *
-     * @param reminder existing Reminder entity
-     * @param request updated reminder information
+     * Relationships are intentionally excluded.
      */
     public static void updateEntity(
             Reminder reminder,
             ReminderRequest request) {
 
-        if (reminder == null || request == null) {
+        if (reminder == null
+                || request == null) {
+
             return;
         }
 
-        // ------------------------------------------------------
-        // Update Reminder Information
-        // ------------------------------------------------------
 
         reminder.setTitle(
                 request.getTitle()
@@ -345,11 +323,6 @@ public class ReminderMapper {
                 request.getReminderAt()
         );
 
-
-        // ------------------------------------------------------
-        // Update State
-        // ------------------------------------------------------
-
         reminder.setRead(
                 request.isRead()
         );
@@ -361,15 +334,5 @@ public class ReminderMapper {
         reminder.setDismissed(
                 request.isDismissed()
         );
-
-        // ------------------------------------------------------
-        // Relationships intentionally excluded.
-        //
-        // Service layer should handle:
-        //
-        // reminder.setCustomerLead(...)
-        // reminder.setFollowUp(...)
-        // reminder.setAssignedTo(...)
-        // ------------------------------------------------------
     }
 }

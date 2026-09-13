@@ -4,21 +4,15 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.leadpilot.crm.dto.ReminderRequest;
 import com.leadpilot.crm.dto.ReminderResponse;
 import com.leadpilot.crm.entity.Reminder;
 import com.leadpilot.crm.mapper.ReminderMapper;
@@ -26,45 +20,44 @@ import com.leadpilot.crm.service.ReminderService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.enums.ParameterIn;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.Valid;
 
 /**
  * ==========================================================
  * Controller : ReminderController
- * ==========================================================
  *
- * REST controller for managing CRM reminders.
+ * Description :
+ * REST controller for viewing and managing automatically
+ * generated CRM reminders.
  *
- * Base URL:
- * /api/reminders
+ * IMPORTANT:
  *
- * Responsibilities:
+ * Reminders associated with Follow-Ups are NOT manually
+ * created from this controller.
  *
- * - Create reminder
- * - Get reminder
- * - Get all reminders
- * - Update reminder
- * - Delete reminder
- * - Get reminders by user
- * - Get reminders by lead
- * - Get reminders by follow-up
- * - Get unread reminders
- * - Mark reminder as read
- * - Complete reminder
- * - Get pending reminders
- * - Dismiss reminder
- * - Restore reminder
- * - Get upcoming reminders
- * - Get due reminders
+ * They are automatically generated when a Follow-Up is
+ * created.
+ *
+ * Automatic flow:
+ *
+ * Follow-Up created
+ *       ↓
+ * ReminderService
+ *       ↓
+ * Reminder created 24 hours before Follow-Up
+ *
+ * This controller is responsible for:
+ *
+ * - Viewing reminders
+ * - Reading reminders
+ * - Completing reminders
+ * - Dismissing reminders
+ * - Restoring reminders
+ * - Upcoming reminders
+ * - Due reminders
  * - Notification tracking
- * - Search reminders
+ * - Searching reminders
  *
  * ==========================================================
  */
@@ -74,7 +67,7 @@ import jakarta.validation.Valid;
 @SecurityRequirement(name = "bearerAuth")
 @Tag(
         name = "Reminder Management",
-        description = "APIs for creating, managing, searching and tracking CRM reminders"
+        description = "APIs for viewing and managing CRM reminders"
 )
 public class ReminderController {
 
@@ -84,46 +77,18 @@ public class ReminderController {
 
     private final ReminderService reminderService;
 
+
     // ==========================================================
     // CONSTRUCTOR
     // ==========================================================
 
-    public ReminderController(ReminderService reminderService) {
-        this.reminderService = reminderService;
+    public ReminderController(
+            ReminderService reminderService) {
+
+        this.reminderService =
+                reminderService;
     }
 
-    // ==========================================================
-    // CREATE REMINDER
-    // ==========================================================
-
-    @Operation(
-            summary = "Create a reminder",
-            description = "Creates a new CRM reminder."
-    )
-    @ApiResponses({
-            @ApiResponse(
-                    responseCode = "201",
-                    description = "Reminder created successfully",
-                    content = @Content(
-                            schema = @Schema(implementation = ReminderResponse.class)
-                    )
-            ),
-            @ApiResponse(
-                    responseCode = "400",
-                    description = "Invalid reminder data"
-            )
-    })
-    @PostMapping
-    public ResponseEntity<ReminderResponse> createReminder(
-            @Valid @RequestBody ReminderRequest request) {
-
-        Reminder savedReminder =
-                reminderService.createReminder(request);
-
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(ReminderMapper.toResponse(savedReminder));
-    }
 
     // ==========================================================
     // GET ALL REMINDERS
@@ -131,31 +96,24 @@ public class ReminderController {
 
     @Operation(
             summary = "Get all reminders",
-            description = "Returns all reminders available in the CRM system."
+            description = "Returns all automatically generated CRM reminders."
     )
-    @ApiResponses({
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "Reminders retrieved successfully",
-                    content = @Content(
-                            schema = @Schema(
-                                    type = "array",
-                                    implementation = ReminderResponse.class
-                            )
-                    )
-            )
-    })
     @GetMapping
-    public ResponseEntity<List<ReminderResponse>> getAllReminders() {
+    public ResponseEntity<List<ReminderResponse>>
+    getAllReminders() {
 
         List<ReminderResponse> responses =
-                reminderService.getAllReminders()
+                reminderService
+                        .getAllReminders()
                         .stream()
                         .map(ReminderMapper::toResponse)
                         .collect(Collectors.toList());
 
-        return ResponseEntity.ok(responses);
+        return ResponseEntity.ok(
+                responses
+        );
     }
+
 
     // ==========================================================
     // GET REMINDER BY ID
@@ -163,127 +121,32 @@ public class ReminderController {
 
     @Operation(
             summary = "Get reminder by ID",
-            description = "Retrieves a specific reminder using its ID."
+            description = "Retrieves a reminder using its ID."
     )
-    @ApiResponses({
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "Reminder found",
-                    content = @Content(
-                            schema = @Schema(
-                                    implementation = ReminderResponse.class
-                            )
-                    )
-            ),
-            @ApiResponse(
-                    responseCode = "404",
-                    description = "Reminder not found"
-            )
-    })
     @GetMapping("/{reminderId}")
-    public ResponseEntity<ReminderResponse> getReminderById(
+    public ResponseEntity<ReminderResponse>
+    getReminderById(
 
             @Parameter(
-                    name = "reminderId",
-                    description = "Unique ID of the reminder",
+                    description = "Reminder ID",
                     required = true,
-                    in = ParameterIn.PATH,
                     example = "1"
             )
             @PathVariable Long reminderId) {
 
         Reminder reminder =
-                reminderService.getReminderById(reminderId);
+                reminderService
+                        .getReminderById(
+                                reminderId
+                        );
 
         return ResponseEntity.ok(
-                ReminderMapper.toResponse(reminder)
+                ReminderMapper.toResponse(
+                        reminder
+                )
         );
     }
 
-    // ==========================================================
-    // UPDATE REMINDER
-    // ==========================================================
-
-    @Operation(
-            summary = "Update a reminder",
-            description = "Updates an existing CRM reminder."
-    )
-    @ApiResponses({
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "Reminder updated successfully",
-                    content = @Content(
-                            schema = @Schema(
-                                    implementation = ReminderResponse.class
-                            )
-                    )
-            ),
-            @ApiResponse(
-                    responseCode = "400",
-                    description = "Invalid reminder data"
-            ),
-            @ApiResponse(
-                    responseCode = "404",
-                    description = "Reminder not found"
-            )
-    })
-    @PutMapping("/{reminderId}")
-    public ResponseEntity<ReminderResponse> updateReminder(
-
-            @Parameter(
-                    name = "reminderId",
-                    description = "Unique ID of the reminder to update",
-                    required = true,
-                    example = "1"
-            )
-            @PathVariable Long reminderId,
-
-            @Valid @RequestBody ReminderRequest request) {
-
-        Reminder updatedReminder =
-                reminderService.updateReminder(
-                        reminderId,
-                        request,
-                        null
-                );
-
-        return ResponseEntity.ok(
-                ReminderMapper.toResponse(updatedReminder)
-        );
-    }
-    // ==========================================================
-    // DELETE REMINDER
-    // ==========================================================
-
-    @Operation(
-            summary = "Delete a reminder",
-            description = "Permanently deletes a reminder from the CRM system."
-    )
-    @ApiResponses({
-            @ApiResponse(
-                    responseCode = "204",
-                    description = "Reminder deleted successfully"
-            ),
-            @ApiResponse(
-                    responseCode = "404",
-                    description = "Reminder not found"
-            )
-    })
-    @DeleteMapping("/{reminderId}")
-    public ResponseEntity<Void> deleteReminder(
-
-            @Parameter(
-                    name = "reminderId",
-                    description = "Unique ID of the reminder",
-                    required = true,
-                    example = "1"
-            )
-            @PathVariable Long reminderId) {
-
-        reminderService.deleteReminder(reminderId);
-
-        return ResponseEntity.noContent().build();
-    }
 
     // ==========================================================
     // REMINDERS BY USER
@@ -291,21 +154,14 @@ public class ReminderController {
 
     @Operation(
             summary = "Get reminders by user",
-            description = "Returns all reminders assigned to a specific user."
+            description = "Returns reminders assigned to a specific user."
     )
-    @ApiResponses({
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "Reminders retrieved successfully"
-            )
-    })
     @GetMapping("/user/{userId}")
     public ResponseEntity<List<ReminderResponse>>
-    getRemindersByAssignedUserId(
+    getRemindersByUser(
 
             @Parameter(
-                    name = "userId",
-                    description = "ID of the assigned user",
+                    description = "User ID",
                     required = true,
                     example = "1"
             )
@@ -313,13 +169,18 @@ public class ReminderController {
 
         List<ReminderResponse> responses =
                 reminderService
-                        .getRemindersByAssignedUserId(userId)
+                        .getRemindersByAssignedUserId(
+                                userId
+                        )
                         .stream()
                         .map(ReminderMapper::toResponse)
                         .collect(Collectors.toList());
 
-        return ResponseEntity.ok(responses);
+        return ResponseEntity.ok(
+                responses
+        );
     }
+
 
     // ==========================================================
     // PENDING REMINDERS BY USER
@@ -327,217 +188,36 @@ public class ReminderController {
 
     @Operation(
             summary = "Get pending reminders by user",
-            description = "Returns pending reminders assigned to a specific user."
+            description = "Returns pending reminders assigned to a user."
     )
     @GetMapping("/user/{userId}/pending")
     public ResponseEntity<List<ReminderResponse>>
     getPendingRemindersByUser(
 
-            @Parameter(
-                    name = "userId",
-                    description = "ID of the user",
-                    required = true,
-                    example = "1"
-            )
             @PathVariable Long userId) {
 
         List<ReminderResponse> responses =
                 reminderService
-                        .getPendingRemindersByUser(userId)
+                        .getPendingRemindersByUser(
+                                userId
+                        )
                         .stream()
                         .map(ReminderMapper::toResponse)
                         .collect(Collectors.toList());
 
-        return ResponseEntity.ok(responses);
+        return ResponseEntity.ok(
+                responses
+        );
     }
 
-    // ==========================================================
-    // UNREAD REMINDERS BY USER
-    // ==========================================================
-
-    @Operation(
-            summary = "Get unread reminders by user",
-            description = "Returns unread reminders assigned to a specific user."
-    )
-    @GetMapping("/user/{userId}/unread")
-    public ResponseEntity<List<ReminderResponse>>
-    getUnreadRemindersByUser(
-
-            @Parameter(
-                    name = "userId",
-                    description = "ID of the user",
-                    required = true,
-                    example = "1"
-            )
-            @PathVariable Long userId) {
-
-        List<ReminderResponse> responses =
-                reminderService
-                        .getUnreadRemindersByUser(userId)
-                        .stream()
-                        .map(ReminderMapper::toResponse)
-                        .collect(Collectors.toList());
-
-        return ResponseEntity.ok(responses);
-    }
-
-    // ==========================================================
-    // COMPLETED REMINDERS BY USER
-    // ==========================================================
-
-    @Operation(
-            summary = "Get completed reminders by user",
-            description = "Returns completed reminders assigned to a specific user."
-    )
-    @GetMapping("/user/{userId}/completed")
-    public ResponseEntity<List<ReminderResponse>>
-    getCompletedRemindersByUser(
-
-            @Parameter(
-                    name = "userId",
-                    description = "ID of the user",
-                    required = true,
-                    example = "1"
-            )
-            @PathVariable Long userId) {
-
-        List<ReminderResponse> responses =
-                reminderService
-                        .getCompletedRemindersByUser(userId)
-                        .stream()
-                        .map(ReminderMapper::toResponse)
-                        .collect(Collectors.toList());
-
-        return ResponseEntity.ok(responses);
-    }
-
-    // ==========================================================
-    // DISMISSED REMINDERS BY USER
-    // ==========================================================
-
-    @Operation(
-            summary = "Get dismissed reminders by user",
-            description = "Returns dismissed reminders assigned to a specific user."
-    )
-    @GetMapping("/user/{userId}/dismissed")
-    public ResponseEntity<List<ReminderResponse>>
-    getDismissedRemindersByUser(
-
-            @Parameter(
-                    name = "userId",
-                    description = "ID of the user",
-                    required = true,
-                    example = "1"
-            )
-            @PathVariable Long userId) {
-
-        List<ReminderResponse> responses =
-                reminderService
-                        .getDismissedRemindersByUser(userId)
-                        .stream()
-                        .map(ReminderMapper::toResponse)
-                        .collect(Collectors.toList());
-
-        return ResponseEntity.ok(responses);
-    }
-
-    // ==========================================================
-    // REMINDERS BY LEAD
-    // ==========================================================
-
-    @Operation(
-            summary = "Get reminders by lead",
-            description = "Returns all reminders associated with a customer lead."
-    )
-    @GetMapping("/lead/{leadId}")
-    public ResponseEntity<List<ReminderResponse>>
-    getRemindersByLeadId(
-
-            @Parameter(
-                    name = "leadId",
-                    description = "ID of the customer lead",
-                    required = true,
-                    example = "1"
-            )
-            @PathVariable Long leadId) {
-
-        List<ReminderResponse> responses =
-                reminderService
-                        .getRemindersByLeadId(leadId)
-                        .stream()
-                        .map(ReminderMapper::toResponse)
-                        .collect(Collectors.toList());
-
-        return ResponseEntity.ok(responses);
-    }
-
-    // ==========================================================
-    // ORDERED REMINDERS BY LEAD
-    // ==========================================================
-
-    @Operation(
-            summary = "Get ordered reminders by lead",
-            description = "Returns reminders of a lead ordered by reminder time."
-    )
-    @GetMapping("/lead/{leadId}/ordered")
-    public ResponseEntity<List<ReminderResponse>>
-    getRemindersByLeadIdOrdered(
-
-            @Parameter(
-                    name = "leadId",
-                    description = "ID of the customer lead",
-                    required = true,
-                    example = "1"
-            )
-            @PathVariable Long leadId) {
-
-        List<ReminderResponse> responses =
-                reminderService
-                        .getRemindersByLeadIdOrdered(leadId)
-                        .stream()
-                        .map(ReminderMapper::toResponse)
-                        .collect(Collectors.toList());
-
-        return ResponseEntity.ok(responses);
-    }
-
-    // ==========================================================
-    // REMINDERS BY FOLLOW-UP
-    // ==========================================================
-
-    @Operation(
-            summary = "Get reminders by follow-up",
-            description = "Returns reminders associated with a specific follow-up."
-    )
-    @GetMapping("/follow-up/{followUpId}")
-    public ResponseEntity<List<ReminderResponse>>
-    getRemindersByFollowUpId(
-
-            @Parameter(
-                    name = "followUpId",
-                    description = "ID of the follow-up",
-                    required = true,
-                    example = "1"
-            )
-            @PathVariable Long followUpId) {
-
-        List<ReminderResponse> responses =
-                reminderService
-                        .getRemindersByFollowUpId(followUpId)
-                        .stream()
-                        .map(ReminderMapper::toResponse)
-                        .collect(Collectors.toList());
-
-        return ResponseEntity.ok(responses);
-    }
 
     // ==========================================================
     // UNREAD REMINDERS
     // ==========================================================
 
     @Operation(
-            summary = "Get all unread reminders",
-            description = "Returns all reminders that have not been read."
+            summary = "Get unread reminders",
+            description = "Returns all unread reminders."
     )
     @GetMapping("/unread")
     public ResponseEntity<List<ReminderResponse>>
@@ -550,8 +230,35 @@ public class ReminderController {
                         .map(ReminderMapper::toResponse)
                         .collect(Collectors.toList());
 
-        return ResponseEntity.ok(responses);
+        return ResponseEntity.ok(
+                responses
+        );
     }
+ // ==========================================================
+ // UNREAD REMINDER COUNT BY USER
+ // ==========================================================
+
+ @Operation(
+         summary = "Get unread reminder count by user",
+         description = "Returns the number of unread reminders assigned to a specific user."
+ )
+ @GetMapping("/user/{userId}/unread/count")
+ public ResponseEntity<Long> getUnreadReminderCountByUser(
+         @Parameter(
+                 description = "User ID",
+                 required = true,
+                 example = "1"
+         )
+         @PathVariable Long userId) {
+
+     long count =
+             reminderService
+                     .getUnreadReminderCountByUser(
+                             userId
+                     );
+
+     return ResponseEntity.ok(count);
+ }
 
     // ==========================================================
     // UNREAD PENDING REMINDERS
@@ -559,7 +266,7 @@ public class ReminderController {
 
     @Operation(
             summary = "Get unread pending reminders",
-            description = "Returns reminders that are both unread and pending."
+            description = "Returns reminders that are unread and still pending."
     )
     @GetMapping("/unread/pending")
     public ResponseEntity<List<ReminderResponse>>
@@ -572,8 +279,11 @@ public class ReminderController {
                         .map(ReminderMapper::toResponse)
                         .collect(Collectors.toList());
 
-        return ResponseEntity.ok(responses);
+        return ResponseEntity.ok(
+                responses
+        );
     }
+
 
     // ==========================================================
     // MARK AS READ
@@ -581,77 +291,53 @@ public class ReminderController {
 
     @Operation(
             summary = "Mark reminder as read",
-            description = "Marks a specific reminder as read."
+            description = "Marks a reminder as read."
     )
     @PatchMapping("/{reminderId}/read")
     public ResponseEntity<ReminderResponse>
     markAsRead(
 
-            @Parameter(
-                    name = "reminderId",
-                    description = "ID of the reminder",
-                    required = true,
-                    example = "1"
-            )
             @PathVariable Long reminderId) {
 
         Reminder reminder =
-                reminderService.markAsRead(reminderId);
+                reminderService.markAsRead(
+                        reminderId
+                );
 
         return ResponseEntity.ok(
-                ReminderMapper.toResponse(reminder)
+                ReminderMapper.toResponse(
+                        reminder
+                )
         );
     }
 
-    // ==========================================================
-    // COMPLETED REMINDERS
-    // ==========================================================
-
-    @Operation(
-            summary = "Get completed reminders",
-            description = "Returns all completed reminders."
-    )
-    @GetMapping("/completed")
-    public ResponseEntity<List<ReminderResponse>>
-    getCompletedReminders() {
-
-        List<ReminderResponse> responses =
-                reminderService
-                        .getCompletedReminders()
-                        .stream()
-                        .map(ReminderMapper::toResponse)
-                        .collect(Collectors.toList());
-
-        return ResponseEntity.ok(responses);
-    }
 
     // ==========================================================
     // COMPLETE REMINDER
     // ==========================================================
 
     @Operation(
-            summary = "Complete a reminder",
+            summary = "Complete reminder",
             description = "Marks a reminder as completed."
     )
     @PatchMapping("/{reminderId}/complete")
     public ResponseEntity<ReminderResponse>
     completeReminder(
 
-            @Parameter(
-                    name = "reminderId",
-                    description = "ID of the reminder",
-                    required = true,
-                    example = "1"
-            )
             @PathVariable Long reminderId) {
 
         Reminder reminder =
-                reminderService.completeReminder(reminderId);
+                reminderService.completeReminder(
+                        reminderId
+                );
 
         return ResponseEntity.ok(
-                ReminderMapper.toResponse(reminder)
+                ReminderMapper.toResponse(
+                        reminder
+                )
         );
     }
+
 
     // ==========================================================
     // PENDING REMINDERS
@@ -659,33 +345,11 @@ public class ReminderController {
 
     @Operation(
             summary = "Get pending reminders",
-            description = "Returns all reminders that are currently pending."
+            description = "Returns all pending reminders."
     )
     @GetMapping("/pending")
     public ResponseEntity<List<ReminderResponse>>
     getPendingReminders() {
-
-        List<ReminderResponse> responses =
-                reminderService
-                        .getPendingReminders()
-                        .stream()
-                        .map(ReminderMapper::toResponse)
-                        .collect(Collectors.toList());
-
-        return ResponseEntity.ok(responses);
-    }
-
-    // ==========================================================
-    // ORDERED PENDING REMINDERS
-    // ==========================================================
-
-    @Operation(
-            summary = "Get ordered pending reminders",
-            description = "Returns pending reminders ordered by reminder time."
-    )
-    @GetMapping("/pending/ordered")
-    public ResponseEntity<List<ReminderResponse>>
-    getPendingRemindersOrdered() {
 
         List<ReminderResponse> responses =
                 reminderService
@@ -694,8 +358,11 @@ public class ReminderController {
                         .map(ReminderMapper::toResponse)
                         .collect(Collectors.toList());
 
-        return ResponseEntity.ok(responses);
+        return ResponseEntity.ok(
+                responses
+        );
     }
+
 
     // ==========================================================
     // DISMISSED REMINDERS
@@ -703,7 +370,7 @@ public class ReminderController {
 
     @Operation(
             summary = "Get dismissed reminders",
-            description = "Returns all dismissed reminders."
+            description = "Returns dismissed reminders."
     )
     @GetMapping("/dismissed")
     public ResponseEntity<List<ReminderResponse>>
@@ -716,64 +383,123 @@ public class ReminderController {
                         .map(ReminderMapper::toResponse)
                         .collect(Collectors.toList());
 
-        return ResponseEntity.ok(responses);
+        return ResponseEntity.ok(
+                responses
+        );
     }
+
 
     // ==========================================================
     // DISMISS REMINDER
     // ==========================================================
 
     @Operation(
-            summary = "Dismiss a reminder",
+            summary = "Dismiss reminder",
             description = "Dismisses a reminder."
     )
     @PatchMapping("/{reminderId}/dismiss")
     public ResponseEntity<ReminderResponse>
     dismissReminder(
 
-            @Parameter(
-                    name = "reminderId",
-                    description = "ID of the reminder",
-                    required = true,
-                    example = "1"
-            )
             @PathVariable Long reminderId) {
 
         Reminder reminder =
-                reminderService.dismissReminder(reminderId);
+                reminderService.dismissReminder(
+                        reminderId
+                );
 
         return ResponseEntity.ok(
-                ReminderMapper.toResponse(reminder)
+                ReminderMapper.toResponse(
+                        reminder
+                )
         );
     }
+
 
     // ==========================================================
     // RESTORE REMINDER
     // ==========================================================
 
     @Operation(
-            summary = "Restore a reminder",
-            description = "Restores a previously dismissed reminder."
+            summary = "Restore reminder",
+            description = "Restores a dismissed reminder."
     )
     @PatchMapping("/{reminderId}/restore")
     public ResponseEntity<ReminderResponse>
     restoreReminder(
 
-            @Parameter(
-                    name = "reminderId",
-                    description = "ID of the reminder",
-                    required = true,
-                    example = "1"
-            )
             @PathVariable Long reminderId) {
 
         Reminder reminder =
-                reminderService.restoreReminder(reminderId);
+                reminderService.restoreReminder(
+                        reminderId
+                );
 
         return ResponseEntity.ok(
-                ReminderMapper.toResponse(reminder)
+                ReminderMapper.toResponse(
+                        reminder
+                )
         );
     }
+
+
+    // ==========================================================
+    // REMINDERS BY LEAD
+    // ==========================================================
+
+    @Operation(
+            summary = "Get reminders by lead",
+            description = "Returns reminders associated with a customer lead."
+    )
+    @GetMapping("/lead/{leadId}")
+    public ResponseEntity<List<ReminderResponse>>
+    getRemindersByLead(
+
+            @PathVariable Long leadId) {
+
+        List<ReminderResponse> responses =
+                reminderService
+                        .getRemindersByLeadId(
+                                leadId
+                        )
+                        .stream()
+                        .map(ReminderMapper::toResponse)
+                        .collect(Collectors.toList());
+
+        return ResponseEntity.ok(
+                responses
+        );
+    }
+
+
+    // ==========================================================
+    // REMINDERS BY FOLLOW-UP
+    // ==========================================================
+
+    @Operation(
+            summary = "Get reminders by follow-up",
+            description = "Returns the automatic reminder associated with a Follow-Up."
+    )
+    @GetMapping("/follow-up/{followUpId}")
+    public ResponseEntity<List<ReminderResponse>>
+    getRemindersByFollowUp(
+
+            @PathVariable Long followUpId) {
+
+        List<ReminderResponse> responses =
+                reminderService
+                        .getRemindersByFollowUpId(
+                                followUpId
+                        )
+                        .stream()
+                        .map(ReminderMapper::toResponse)
+                        .collect(Collectors.toList());
+
+        return ResponseEntity.ok(
+                responses
+        );
+    }
+
 
     // ==========================================================
     // UPCOMING REMINDERS
@@ -781,80 +507,34 @@ public class ReminderController {
 
     @Operation(
             summary = "Get upcoming reminders",
-            description = "Returns reminders scheduled after the specified date and time. If no dateTime is supplied, the current date and time is used."
+            description = "Returns pending reminders scheduled after the supplied date/time."
     )
     @GetMapping("/upcoming")
     public ResponseEntity<List<ReminderResponse>>
     getUpcomingReminders(
 
-            @Parameter(
-                    name = "dateTime",
-                    description = "Starting date and time for upcoming reminders. Format: yyyy-MM-ddTHH:mm:ss",
-                    required = false,
-                    example = "2026-08-11T20:00:00"
-            )
             @RequestParam(required = false)
             LocalDateTime dateTime) {
 
         if (dateTime == null) {
-            dateTime = LocalDateTime.now();
+            dateTime =
+                    LocalDateTime.now();
         }
 
         List<ReminderResponse> responses =
                 reminderService
-                        .getUpcomingReminders(dateTime)
-                        .stream()
-                        .map(ReminderMapper::toResponse)
-                        .collect(Collectors.toList());
-
-        return ResponseEntity.ok(responses);
-    }
-
-    // ==========================================================
-    // UPCOMING REMINDERS BY USER
-    // ==========================================================
-
-    @Operation(
-            summary = "Get upcoming reminders by user",
-            description = "Returns upcoming reminders assigned to a specific user."
-    )
-    @GetMapping("/user/{userId}/upcoming")
-    public ResponseEntity<List<ReminderResponse>>
-    getUpcomingRemindersByUser(
-
-            @Parameter(
-                    name = "userId",
-                    description = "ID of the user",
-                    required = true,
-                    example = "1"
-            )
-            @PathVariable Long userId,
-
-            @Parameter(
-                    name = "dateTime",
-                    description = "Starting date and time. Format: yyyy-MM-ddTHH:mm:ss",
-                    required = false,
-                    example = "2026-08-11T20:00:00"
-            )
-            @RequestParam(required = false)
-            LocalDateTime dateTime) {
-
-        if (dateTime == null) {
-            dateTime = LocalDateTime.now();
-        }
-
-        List<ReminderResponse> responses =
-                reminderService
-                        .getUpcomingRemindersByUser(
-                                userId,
+                        .getUpcomingReminders(
                                 dateTime
                         )
                         .stream()
                         .map(ReminderMapper::toResponse)
                         .collect(Collectors.toList());
 
-        return ResponseEntity.ok(responses);
+        return ResponseEntity.ok(
+                responses
+        );
     }
+
 
     // ==========================================================
     // DUE REMINDERS
@@ -862,34 +542,34 @@ public class ReminderController {
 
     @Operation(
             summary = "Get due reminders",
-            description = "Returns reminders whose scheduled time is due. If dateTime is omitted, the current date and time is used."
+            description = "Returns reminders whose reminder time has arrived."
     )
     @GetMapping("/due")
     public ResponseEntity<List<ReminderResponse>>
     getDueReminders(
 
-            @Parameter(
-                    name = "dateTime",
-                    description = "Reference date and time. Format: yyyy-MM-ddTHH:mm:ss",
-                    required = false,
-                    example = "2026-08-11T20:00:00"
-            )
             @RequestParam(required = false)
             LocalDateTime dateTime) {
 
         if (dateTime == null) {
-            dateTime = LocalDateTime.now();
+            dateTime =
+                    LocalDateTime.now();
         }
 
         List<ReminderResponse> responses =
                 reminderService
-                        .getDueReminders(dateTime)
+                        .getDueReminders(
+                                dateTime
+                        )
                         .stream()
                         .map(ReminderMapper::toResponse)
                         .collect(Collectors.toList());
 
-        return ResponseEntity.ok(responses);
+        return ResponseEntity.ok(
+                responses
+        );
     }
+
 
     // ==========================================================
     // DUE REMINDERS BY USER
@@ -903,25 +583,14 @@ public class ReminderController {
     public ResponseEntity<List<ReminderResponse>>
     getDueRemindersByUser(
 
-            @Parameter(
-                    name = "userId",
-                    description = "ID of the user",
-                    required = true,
-                    example = "1"
-            )
             @PathVariable Long userId,
 
-            @Parameter(
-                    name = "dateTime",
-                    description = "Reference date and time. Format: yyyy-MM-ddTHH:mm:ss",
-                    required = false,
-                    example = "2026-08-11T20:00:00"
-            )
             @RequestParam(required = false)
             LocalDateTime dateTime) {
 
         if (dateTime == null) {
-            dateTime = LocalDateTime.now();
+            dateTime =
+                    LocalDateTime.now();
         }
 
         List<ReminderResponse> responses =
@@ -934,8 +603,11 @@ public class ReminderController {
                         .map(ReminderMapper::toResponse)
                         .collect(Collectors.toList());
 
-        return ResponseEntity.ok(responses);
+        return ResponseEntity.ok(
+                responses
+        );
     }
+
 
     // ==========================================================
     // NOTIFICATION PENDING
@@ -943,7 +615,7 @@ public class ReminderController {
 
     @Operation(
             summary = "Get reminders with pending notifications",
-            description = "Returns reminders for which notification has not been sent."
+            description = "Returns reminders whose notifications have not been sent."
     )
     @GetMapping("/notifications/pending")
     public ResponseEntity<List<ReminderResponse>>
@@ -956,8 +628,11 @@ public class ReminderController {
                         .map(ReminderMapper::toResponse)
                         .collect(Collectors.toList());
 
-        return ResponseEntity.ok(responses);
+        return ResponseEntity.ok(
+                responses
+        );
     }
+
 
     // ==========================================================
     // DUE NOTIFICATIONS PENDING
@@ -965,23 +640,18 @@ public class ReminderController {
 
     @Operation(
             summary = "Get due reminders with pending notifications",
-            description = "Returns due reminders whose notification has not yet been sent."
+            description = "Returns due reminders whose notifications have not been sent."
     )
     @GetMapping("/notifications/due")
     public ResponseEntity<List<ReminderResponse>>
     getDueRemindersWithNotificationPending(
 
-            @Parameter(
-                    name = "dateTime",
-                    description = "Reference date and time. Format: yyyy-MM-ddTHH:mm:ss",
-                    required = false,
-                    example = "2026-08-11T20:00:00"
-            )
             @RequestParam(required = false)
             LocalDateTime dateTime) {
 
         if (dateTime == null) {
-            dateTime = LocalDateTime.now();
+            dateTime =
+                    LocalDateTime.now();
         }
 
         List<ReminderResponse> responses =
@@ -993,8 +663,11 @@ public class ReminderController {
                         .map(ReminderMapper::toResponse)
                         .collect(Collectors.toList());
 
-        return ResponseEntity.ok(responses);
+        return ResponseEntity.ok(
+                responses
+        );
     }
+
 
     // ==========================================================
     // NOTIFICATION SENT
@@ -1002,7 +675,7 @@ public class ReminderController {
 
     @Operation(
             summary = "Get reminders with sent notifications",
-            description = "Returns reminders whose notifications have already been sent."
+            description = "Returns reminders whose notifications have been sent."
     )
     @GetMapping("/notifications/sent")
     public ResponseEntity<List<ReminderResponse>>
@@ -1015,8 +688,11 @@ public class ReminderController {
                         .map(ReminderMapper::toResponse)
                         .collect(Collectors.toList());
 
-        return ResponseEntity.ok(responses);
+        return ResponseEntity.ok(
+                responses
+        );
     }
+
 
     // ==========================================================
     // MARK NOTIFICATION AS SENT
@@ -1024,195 +700,82 @@ public class ReminderController {
 
     @Operation(
             summary = "Mark notification as sent",
-            description = "Marks the notification associated with a reminder as sent."
+            description = "Marks the notification for a reminder as sent."
     )
     @PatchMapping("/{reminderId}/notification-sent")
     public ResponseEntity<ReminderResponse>
     markNotificationAsSent(
 
-            @Parameter(
-                    name = "reminderId",
-                    description = "ID of the reminder",
-                    required = true,
-                    example = "1"
-            )
             @PathVariable Long reminderId) {
 
         Reminder reminder =
-                reminderService.markNotificationAsSent(
-                        reminderId
-                );
+                reminderService
+                        .markNotificationAsSent(
+                                reminderId
+                        );
 
         return ResponseEntity.ok(
-                ReminderMapper.toResponse(reminder)
+                ReminderMapper.toResponse(
+                        reminder
+                )
         );
     }
 
+
     // ==========================================================
-    // SEARCH REMINDERS
+    // SEARCH
     // ==========================================================
 
     @Operation(
-            summary = "Search reminders by title",
-            description = "Searches reminders using their title."
+            summary = "Search reminders",
+            description = "Searches reminders by title."
     )
     @GetMapping("/search")
     public ResponseEntity<List<ReminderResponse>>
-    searchRemindersByTitle(
+    searchReminders(
 
-            @Parameter(
-                    name = "title",
-                    description = "Title text to search for",
-                    required = true,
-                    example = "Call customer"
-            )
             @RequestParam String title) {
 
         List<ReminderResponse> responses =
                 reminderService
-                        .searchRemindersByTitle(title)
+                        .searchRemindersByTitle(
+                                title
+                        )
                         .stream()
                         .map(ReminderMapper::toResponse)
                         .collect(Collectors.toList());
-
-        return ResponseEntity.ok(responses);
-    }
-
-    // ==========================================================
-    // SEARCH PENDING REMINDERS
-    // ==========================================================
-
-    @Operation(
-            summary = "Search pending reminders by title",
-            description = "Searches only pending reminders using their title."
-    )
-    @GetMapping("/search/pending")
-    public ResponseEntity<List<ReminderResponse>>
-    searchPendingRemindersByTitle(
-
-            @Parameter(
-                    name = "title",
-                    description = "Title text to search for",
-                    required = true,
-                    example = "Call customer"
-            )
-            @RequestParam String title) {
-
-        List<ReminderResponse> responses =
-                reminderService
-                        .searchPendingRemindersByTitle(title)
-                        .stream()
-                        .map(ReminderMapper::toResponse)
-                        .collect(Collectors.toList());
-
-        return ResponseEntity.ok(responses);
-    }
-
-    // ==========================================================
-    // CREATED BY USER
-    // ==========================================================
-
-    @Operation(
-            summary = "Get reminders created by user",
-            description = "Returns reminders created by a specific user."
-    )
-    @GetMapping("/created-by/{userId}")
-    public ResponseEntity<List<ReminderResponse>>
-    getRemindersByCreatedBy(
-
-            @Parameter(
-                    name = "userId",
-                    description = "ID of the user who created the reminders",
-                    required = true,
-                    example = "1"
-            )
-            @PathVariable Long userId) {
-
-        List<ReminderResponse> responses =
-                reminderService
-                        .getRemindersByCreatedBy(userId)
-                        .stream()
-                        .map(ReminderMapper::toResponse)
-                        .collect(Collectors.toList());
-
-        return ResponseEntity.ok(responses);
-    }
-
-    // ==========================================================
-    // UPDATED BY USER
-    // ==========================================================
-
-    @Operation(
-            summary = "Get reminders updated by user",
-            description = "Returns reminders last updated by a specific user."
-    )
-    @GetMapping("/updated-by/{userId}")
-    public ResponseEntity<List<ReminderResponse>>
-    getRemindersByUpdatedBy(
-
-            @Parameter(
-                    name = "userId",
-                    description = "ID of the user who updated the reminders",
-                    required = true,
-                    example = "1"
-            )
-            @PathVariable Long userId) {
-
-        List<ReminderResponse> responses =
-                reminderService
-                        .getRemindersByUpdatedBy(userId)
-                        .stream()
-                        .map(ReminderMapper::toResponse)
-                        .collect(Collectors.toList());
-
-        return ResponseEntity.ok(responses);
-    }
-
-    // ==========================================================
-    // EXISTS BY LEAD
-    // ==========================================================
-
-    @Operation(
-            summary = "Check reminder existence by lead",
-            description = "Checks whether at least one reminder exists for a specific lead."
-    )
-    @GetMapping("/exists/lead/{leadId}")
-    public ResponseEntity<Boolean> existsByLeadId(
-
-            @Parameter(
-                    name = "leadId",
-                    description = "ID of the customer lead",
-                    required = true,
-                    example = "1"
-            )
-            @PathVariable Long leadId) {
 
         return ResponseEntity.ok(
-                reminderService.existsByLeadId(leadId)
+                responses
         );
     }
 
+
     // ==========================================================
-    // EXISTS BY FOLLOW-UP
+    // SEARCH PENDING
     // ==========================================================
 
     @Operation(
-            summary = "Check reminder existence by follow-up",
-            description = "Checks whether at least one reminder exists for a specific follow-up."
+            summary = "Search pending reminders",
+            description = "Searches only pending reminders by title."
     )
-    @GetMapping("/exists/follow-up/{followUpId}")
-    public ResponseEntity<Boolean> existsByFollowUpId(
+    @GetMapping("/search/pending")
+    public ResponseEntity<List<ReminderResponse>>
+    searchPendingReminders(
 
-            @Parameter(
-                    name = "followUpId",
-                    description = "ID of the follow-up",
-                    required = true,
-                    example = "1"
-            )
-            @PathVariable Long followUpId) {
+            @RequestParam String title) {
+
+        List<ReminderResponse> responses =
+                reminderService
+                        .searchPendingRemindersByTitle(
+                                title
+                        )
+                        .stream()
+                        .map(ReminderMapper::toResponse)
+                        .collect(Collectors.toList());
 
         return ResponseEntity.ok(
-                reminderService.existsByFollowUpId(followUpId)
+                responses
         );
     }
 }

@@ -35,9 +35,6 @@ import com.leadpilot.crm.entity.User;
  * - Notification tracking
  * - Searching reminders by title
  *
- * Spring Data JPA automatically provides the implementation
- * for the methods declared in this interface.
- *
  * ==========================================================
  */
 @Repository
@@ -45,203 +42,30 @@ public interface ReminderRepository
         extends JpaRepository<Reminder, Long> {
 
     // ==========================================================
-    // Find Reminder By ID
+    // FIND REMINDER BY ID
     // ==========================================================
 
-    /**
-     * Finds a reminder by its primary key.
-     *
-     * @param reminderId reminder ID
-     * @return optional reminder
-     */
-    Optional<Reminder> findByReminderId(Long reminderId);
+    Optional<Reminder> findByReminderId(
+            Long reminderId
+    );
 
 
     // ==========================================================
-    // Assigned User
+    // ASSIGNED USER
     // ==========================================================
 
-    /**
-     * Finds all reminders assigned to a particular user.
-     *
-     * @param assignedTo assigned user
-     * @return list of reminders
-     */
     List<Reminder> findByAssignedTo(
             User assignedTo
     );
 
-
-    /**
-     * Finds reminders assigned to a user ordered
-     * by reminder date and time.
-     *
-     * @param assignedTo assigned user
-     * @return ordered reminders
-     */
     List<Reminder> findByAssignedToOrderByReminderAtAsc(
             User assignedTo
     );
 
-
-    /**
-     * Finds reminders using the assigned user's ID.
-     *
-     * @param userId assigned user ID
-     * @return list of reminders
-     */
     List<Reminder> findByAssignedTo_Id(
             Long userId
     );
 
-
-    /**
-     * Finds active pending reminders assigned to
-     * a particular user.
-     *
-     * Active pending means:
-     *
-     * - completed = false
-     * - dismissed = false
-     *
-     * @param userId assigned user ID
-     * @return pending reminders
-     */
-  
-
-    // ==========================================================
-    // Customer Lead
-    // ==========================================================
-
-    /**
-     * Finds all reminders associated with a customer lead.
-     *
-     * @param customerLead customer lead
-     * @return list of reminders
-     */
-    List<Reminder> findByCustomerLead(
-            CustomerLead customerLead
-    );
-
-
-    /**
-     * Finds reminders using the customer lead ID.
-     *
-     * @param leadId customer lead ID
-     * @return list of reminders
-     */
-    List<Reminder> findByCustomerLead_LeadId(
-            Long leadId
-    );
-
-
-    /**
-     * Finds reminders for a lead ordered by reminder date.
-     *
-     * @param leadId customer lead ID
-     * @return ordered reminders
-     */
-    List<Reminder>
-    findByCustomerLead_LeadIdOrderByReminderAtAsc(
-            Long leadId
-    );
-
-
-    // ==========================================================
-    // Follow-Up
-    // ==========================================================
-
-    /**
-     * Finds all reminders associated with a follow-up.
-     *
-     * @param followUp follow-up entity
-     * @return list of reminders
-     */
-    List<Reminder> findByFollowUp(
-            FollowUp followUp
-    );
-
-
-    /**
-     * Finds reminders using the follow-up ID.
-     *
-     * @param followUpId follow-up ID
-     * @return list of reminders
-     */
-    List<Reminder> findByFollowUp_FollowUpId(
-            Long followUpId
-    );
-
-
-    // ==========================================================
-    // Unread Reminders
-    // ==========================================================
-
-    /**
-     * Finds all unread reminders.
-     */
-    List<Reminder> findByReadFalse();
-
-
-    /**
-     * Finds unread reminders assigned to a particular user.
-     *
-     * @param userId assigned user ID
-     * @return unread reminders
-     */
-    List<Reminder>
-    findByAssignedTo_IdAndReadFalseOrderByReminderAtAsc(
-            Long userId
-    );
-
-
-    // ==========================================================
-    // Completed Reminders
-    // ==========================================================
-
-    /**
-     * Finds all completed reminders.
-     */
-    List<Reminder> findByCompletedTrue();
-
-
-    /**
-     * Finds completed reminders assigned to a user.
-     *
-     * @param userId assigned user ID
-     * @return completed reminders
-     */
-    List<Reminder>
-    findByAssignedTo_IdAndCompletedTrueOrderByCompletedAtDesc(
-            Long userId
-    );
-
-
-    // ==========================================================
-    // Pending Reminders
-    // ==========================================================
-
-    /**
-     * Finds all reminders that are not completed
-     * and not dismissed.
-     */
-    List<Reminder>
-    findByCompletedFalseAndDismissedFalse();
-
-
-    /**
-     * Finds pending reminders ordered by reminder date.
-     */
-    List<Reminder>
-    findByCompletedFalseAndDismissedFalseOrderByReminderAtAsc();
-
-
-    /**
-     * Finds pending reminders assigned to a particular user.
-     *
-     * IMPORTANT:
-     * This method appears ONLY ONCE in this repository.
-     */
     List<Reminder>
     findByAssignedTo_IdAndCompletedFalseAndDismissedFalseOrderByReminderAtAsc(
             Long userId
@@ -249,21 +73,107 @@ public interface ReminderRepository
 
 
     // ==========================================================
-    // Dismissed Reminders
+    // CUSTOMER LEAD
+    // ==========================================================
+
+    List<Reminder> findByCustomerLead(
+            CustomerLead customerLead
+    );
+
+    List<Reminder> findByCustomerLead_LeadId(
+            Long leadId
+    );
+
+    List<Reminder>
+    findByCustomerLead_LeadIdOrderByReminderAtAsc(
+            Long leadId
+    );
+
+
+    // ==========================================================
+    // FOLLOW-UP
     // ==========================================================
 
     /**
-     * Finds all dismissed reminders.
+     * Finds all reminders associated with a follow-up.
      */
-    List<Reminder> findByDismissedTrue();
-
+    List<Reminder> findByFollowUp(
+            FollowUp followUp
+    );
 
     /**
-     * Finds dismissed reminders assigned to a user.
-     *
-     * @param userId assigned user ID
-     * @return dismissed reminders
+     * Finds all reminders associated with a follow-up ID.
      */
+    List<Reminder> findByFollowUp_FollowUpId(
+            Long followUpId
+    );
+
+    /**
+     * Finds one reminder associated with a follow-up.
+     *
+     * LeadPilot uses one automatic reminder per follow-up.
+     *
+     * This method is mainly used by the automatic
+     * Follow-Up -> Reminder integration.
+     */
+    Optional<Reminder> findFirstByFollowUp_FollowUpId(
+            Long followUpId
+    );
+
+
+    // ==========================================================
+    // UNREAD REMINDERS
+    // ==========================================================
+
+    List<Reminder> findByReadFalse();
+
+    List<Reminder>
+    findByAssignedTo_IdAndReadFalseOrderByReminderAtAsc(
+            Long userId
+    );
+    long countByAssignedTo_IdAndReadFalse(Long userId);
+
+    List<Reminder>
+    findByReadFalseAndCompletedFalseAndDismissedFalseOrderByReminderAtAsc();
+
+    List<Reminder>
+    findByAssignedTo_IdAndReadFalseAndCompletedFalseAndDismissedFalseOrderByReminderAtAsc(
+            Long userId
+    );
+
+
+    // ==========================================================
+    // COMPLETED REMINDERS
+    // ==========================================================
+
+    List<Reminder> findByCompletedTrue();
+
+    List<Reminder>
+    findByAssignedTo_IdAndCompletedTrueOrderByCompletedAtDesc(
+            Long userId
+    );
+
+
+    // ==========================================================
+    // PENDING REMINDERS
+    // ==========================================================
+
+    List<Reminder>
+    findByCompletedFalseAndDismissedFalse();
+
+    List<Reminder>
+    findByCompletedFalseAndDismissedFalseOrderByReminderAtAsc();
+
+   
+   
+
+
+    // ==========================================================
+    // DISMISSED REMINDERS
+    // ==========================================================
+
+    List<Reminder> findByDismissedTrue();
+
     List<Reminder>
     findByAssignedTo_IdAndDismissedTrueOrderByReminderAtDesc(
             Long userId
@@ -271,29 +181,14 @@ public interface ReminderRepository
 
 
     // ==========================================================
-    // Upcoming Reminders
+    // UPCOMING REMINDERS
     // ==========================================================
 
-    /**
-     * Finds pending reminders scheduled after
-     * the supplied date and time.
-     *
-     * @param dateTime starting date/time
-     * @return upcoming reminders
-     */
     List<Reminder>
     findByReminderAtAfterAndCompletedFalseAndDismissedFalseOrderByReminderAtAsc(
             LocalDateTime dateTime
     );
 
-
-    /**
-     * Finds upcoming pending reminders for a particular user.
-     *
-     * @param userId assigned user ID
-     * @param dateTime starting date/time
-     * @return upcoming reminders
-     */
     List<Reminder>
     findByAssignedTo_IdAndReminderAtAfterAndCompletedFalseAndDismissedFalseOrderByReminderAtAsc(
             Long userId,
@@ -302,29 +197,14 @@ public interface ReminderRepository
 
 
     // ==========================================================
-    // Due Reminders
+    // DUE REMINDERS
     // ==========================================================
 
-    /**
-     * Finds reminders that are due at or before
-     * the supplied date/time and are still pending.
-     *
-     * @param dateTime current date/time
-     * @return due reminders
-     */
     List<Reminder>
     findByReminderAtLessThanEqualAndCompletedFalseAndDismissedFalseOrderByReminderAtAsc(
             LocalDateTime dateTime
     );
 
-
-    /**
-     * Finds due reminders for a particular user.
-     *
-     * @param userId assigned user ID
-     * @param dateTime current date/time
-     * @return due reminders
-     */
     List<Reminder>
     findByAssignedTo_IdAndReminderAtLessThanEqualAndCompletedFalseAndDismissedFalseOrderByReminderAtAsc(
             Long userId,
@@ -333,85 +213,28 @@ public interface ReminderRepository
 
 
     // ==========================================================
-    // Notification Tracking
+    // NOTIFICATION TRACKING
     // ==========================================================
 
-    /**
-     * Finds reminders whose notification has not been sent.
-     */
     List<Reminder> findByNotificationSentFalse();
 
-
-    /**
-     * Finds due reminders whose notification has not
-     * yet been sent.
-     *
-     * Useful for scheduled notification processing.
-     *
-     * @param dateTime current date/time
-     * @return reminders requiring notification
-     */
     List<Reminder>
     findByReminderAtLessThanEqualAndNotificationSentFalseAndCompletedFalseAndDismissedFalseOrderByReminderAtAsc(
             LocalDateTime dateTime
     );
 
-
-    /**
-     * Finds reminders whose notification has already been sent.
-     */
     List<Reminder> findByNotificationSentTrue();
 
 
     // ==========================================================
-    // Read + Pending
+    // SEARCH BY TITLE
     // ==========================================================
 
-    /**
-     * Finds unread and pending reminders.
-     */
-    List<Reminder>
-    findByReadFalseAndCompletedFalseAndDismissedFalseOrderByReminderAtAsc();
-
-
-    /**
-     * Finds unread and pending reminders assigned
-     * to a particular user.
-     *
-     * @param userId assigned user ID
-     * @return unread pending reminders
-     */
-    List<Reminder>
-    findByAssignedTo_IdAndReadFalseAndCompletedFalseAndDismissedFalseOrderByReminderAtAsc(
-            Long userId
-    );
-
-
-    // ==========================================================
-    // Search By Title
-    // ==========================================================
-
-    /**
-     * Searches reminders by title.
-     *
-     * Case-insensitive and matches titles containing
-     * the supplied keyword.
-     *
-     * @param title search keyword
-     * @return matching reminders
-     */
     List<Reminder>
     findByTitleContainingIgnoreCaseOrderByReminderAtAsc(
             String title
     );
 
-
-    /**
-     * Searches pending reminders by title.
-     *
-     * @param title search keyword
-     * @return matching pending reminders
-     */
     List<Reminder>
     findByTitleContainingIgnoreCaseAndCompletedFalseAndDismissedFalseOrderByReminderAtAsc(
             String title
@@ -419,15 +242,9 @@ public interface ReminderRepository
 
 
     // ==========================================================
-    // Created By
+    // CREATED BY USER
     // ==========================================================
 
-    /**
-     * Finds reminders created by a particular user.
-     *
-     * @param userId creator user ID
-     * @return reminders created by the user
-     */
     List<Reminder>
     findByCreatedBy_IdOrderByCreatedAtDesc(
             Long userId
@@ -435,15 +252,9 @@ public interface ReminderRepository
 
 
     // ==========================================================
-    // Updated By
+    // UPDATED BY USER
     // ==========================================================
 
-    /**
-     * Finds reminders last updated by a particular user.
-     *
-     * @param userId updater user ID
-     * @return reminders updated by the user
-     */
     List<Reminder>
     findByUpdatedBy_IdOrderByUpdatedAtDesc(
             Long userId
@@ -451,27 +262,13 @@ public interface ReminderRepository
 
 
     // ==========================================================
-    // Existence Checks
+    // EXISTENCE CHECKS
     // ==========================================================
 
-    /**
-     * Checks whether a reminder exists for a particular lead.
-     *
-     * @param leadId customer lead ID
-     * @return true if at least one reminder exists
-     */
     boolean existsByCustomerLead_LeadId(
             Long leadId
     );
 
-
-    /**
-     * Checks whether a reminder exists for a particular
-     * follow-up.
-     *
-     * @param followUpId follow-up ID
-     * @return true if at least one reminder exists
-     */
     boolean existsByFollowUp_FollowUpId(
             Long followUpId
     );

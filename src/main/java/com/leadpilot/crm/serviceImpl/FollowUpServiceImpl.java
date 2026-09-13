@@ -4,8 +4,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.leadpilot.crm.entity.CustomerLead;
 import com.leadpilot.crm.entity.FollowUp;
@@ -14,51 +14,171 @@ import com.leadpilot.crm.enums.FollowUpStatus;
 import com.leadpilot.crm.enums.FollowUpType;
 import com.leadpilot.crm.repository.FollowUpRepository;
 import com.leadpilot.crm.service.FollowUpService;
+import com.leadpilot.crm.service.ReminderService;
 
 /**
  * ==========================================================
  * Service Implementation : FollowUpServiceImpl
  *
  * Description :
- * Implements business operations for managing FollowUp.
+ * Implements business operations for managing Follow-Ups.
  *
- * FollowUp represents a planned action for a customer lead,
- * such as:
+ * IMPORTANT:
  *
- *  - Phone call
- *  - Email
- *  - WhatsApp
- *  - Meeting
- *  - Site / property visit
- *  - Other customer interactions
+ * Whenever a Follow-Up is created, an automatic Reminder is
+ * created through ReminderService.
  *
- * This service supports both:
+ * Automatic reminder rule:
  *
- *  - Admin Dashboard
- *  - Executive Dashboard
+ *     Reminder Time = Follow-Up Time - 24 hours
+ *
+ * Example:
+ *
+ * Follow-Up:
+ * 20 September 2026 - 10:00 AM
+ *
+ * Reminder:
+ * 19 September 2026 - 10:00 AM
+ *
+ * The Reminder is assigned to the same user as the Follow-Up.
  *
  * ==========================================================
  */
 @Service
+@Transactional
 public class FollowUpServiceImpl implements FollowUpService {
 
     // ==========================================================
-    // Repository Dependency
+    // REPOSITORIES
     // ==========================================================
 
-    @Autowired
-    private FollowUpRepository followUpRepository;
+    private final FollowUpRepository followUpRepository;
 
 
     // ==========================================================
-    // CREATE
+    // SERVICES
     // ==========================================================
 
+    private final ReminderService reminderService;
+
+
+    // ==========================================================
+    // CONSTRUCTOR
+    // ==========================================================
+
+    public FollowUpServiceImpl(
+            FollowUpRepository followUpRepository,
+            ReminderService reminderService) {
+
+        this.followUpRepository = followUpRepository;
+        this.reminderService = reminderService;
+    }
+
+
+    // ==========================================================
+    // CREATE FOLLOW-UP
+    // ==========================================================
+
+    /**
+     * Creates a Follow-Up and automatically creates its
+     * corresponding Reminder.
+     *
+     * Flow:
+     *
+     * 1. Validate Follow-Up
+     * 2. Save Follow-Up
+     * 3. Create Reminder automatically
+     * 4. Return saved Follow-Up
+     *
+     * The entire operation is transactional.
+     */
     @Override
     public FollowUp createFollowUp(
             FollowUp followUp) {
 
-        return followUpRepository.save(followUp);
+        // ------------------------------------------------------
+        // Basic validation
+        // ------------------------------------------------------
+
+        if (followUp == null) {
+
+            throw new IllegalArgumentException(
+                    "Follow-up cannot be null"
+            );
+        }
+
+
+        if (followUp.getCustomerLead() == null) {
+
+            throw new IllegalArgumentException(
+                    "Customer lead is required for a follow-up"
+            );
+        }
+
+
+        if (followUp.getAssignedUser() == null) {
+
+            throw new IllegalArgumentException(
+                    "Assigned user is required for a follow-up"
+            );
+        }
+
+
+        if (followUp.getScheduledAt() == null) {
+
+            throw new IllegalArgumentException(
+                    "Follow-up scheduled date and time is required"
+            );
+        }
+
+
+        if (followUp.getSubject() == null
+                || followUp.getSubject().isBlank()) {
+
+            throw new IllegalArgumentException(
+                    "Follow-up subject is required"
+            );
+        }
+
+
+        // ------------------------------------------------------
+        // Save Follow-Up first
+        // ------------------------------------------------------
+
+        FollowUp savedFollowUp =
+                followUpRepository.save(
+                        followUp
+                );
+
+
+        // ------------------------------------------------------
+        // IMPORTANT:
+        //
+        // Flush the Follow-Up so that it definitely has its
+        // generated database ID before the Reminder is created.
+        // ------------------------------------------------------
+
+        followUpRepository.flush();
+
+
+        // ------------------------------------------------------
+        // Automatically create Reminder
+        //
+        // ReminderService calculates:
+        //
+        // scheduledAt - 24 hours
+        // ------------------------------------------------------
+
+        reminderService.createReminderForFollowUp(
+                savedFollowUp
+        );
+
+
+        // ------------------------------------------------------
+        // Return Follow-Up
+        // ------------------------------------------------------
+
+        return savedFollowUp;
     }
 
 
@@ -67,6 +187,7 @@ public class FollowUpServiceImpl implements FollowUpService {
     // ==========================================================
 
     @Override
+    @Transactional(readOnly = true)
     public List<FollowUp> getAllFollowUps() {
 
         return followUpRepository.findAll();
@@ -74,6 +195,7 @@ public class FollowUpServiceImpl implements FollowUpService {
 
 
     @Override
+    @Transactional(readOnly = true)
     public FollowUp getFollowUpById(
             Long followUpId) {
 
@@ -105,6 +227,7 @@ public class FollowUpServiceImpl implements FollowUpService {
                                 )
                         );
 
+
         // ------------------------------------------------------
         // Update Lead
         // ------------------------------------------------------
@@ -112,6 +235,7 @@ public class FollowUpServiceImpl implements FollowUpService {
         existingFollowUp.setCustomerLead(
                 followUp.getCustomerLead()
         );
+
 
         // ------------------------------------------------------
         // Update Assigned User
@@ -121,6 +245,7 @@ public class FollowUpServiceImpl implements FollowUpService {
                 followUp.getAssignedUser()
         );
 
+
         // ------------------------------------------------------
         // Update Follow-Up Type
         // ------------------------------------------------------
@@ -128,6 +253,7 @@ public class FollowUpServiceImpl implements FollowUpService {
         existingFollowUp.setFollowUpType(
                 followUp.getFollowUpType()
         );
+
 
         // ------------------------------------------------------
         // Update Subject
@@ -137,6 +263,7 @@ public class FollowUpServiceImpl implements FollowUpService {
                 followUp.getSubject()
         );
 
+
         // ------------------------------------------------------
         // Update Scheduled Date & Time
         // ------------------------------------------------------
@@ -144,6 +271,7 @@ public class FollowUpServiceImpl implements FollowUpService {
         existingFollowUp.setScheduledAt(
                 followUp.getScheduledAt()
         );
+
 
         // ------------------------------------------------------
         // Update Location
@@ -153,6 +281,7 @@ public class FollowUpServiceImpl implements FollowUpService {
                 followUp.getLocation()
         );
 
+
         // ------------------------------------------------------
         // Update Description
         // ------------------------------------------------------
@@ -160,6 +289,7 @@ public class FollowUpServiceImpl implements FollowUpService {
         existingFollowUp.setDescription(
                 followUp.getDescription()
         );
+
 
         // ------------------------------------------------------
         // Update Status
@@ -172,6 +302,7 @@ public class FollowUpServiceImpl implements FollowUpService {
             );
         }
 
+
         // ------------------------------------------------------
         // Update Completion Information
         // ------------------------------------------------------
@@ -183,6 +314,11 @@ public class FollowUpServiceImpl implements FollowUpService {
         existingFollowUp.setOutcome(
                 followUp.getOutcome()
         );
+
+
+        // ------------------------------------------------------
+        // Save
+        // ------------------------------------------------------
 
         return followUpRepository.save(
                 existingFollowUp
@@ -218,6 +354,7 @@ public class FollowUpServiceImpl implements FollowUpService {
     // ==========================================================
 
     @Override
+    @Transactional(readOnly = true)
     public List<FollowUp> getFollowUpsByLead(
             CustomerLead customerLead) {
 
@@ -229,6 +366,7 @@ public class FollowUpServiceImpl implements FollowUpService {
 
 
     @Override
+    @Transactional(readOnly = true)
     public List<FollowUp> getFollowUpsByLeadAndDateRange(
             CustomerLead customerLead,
             LocalDateTime start,
@@ -244,6 +382,7 @@ public class FollowUpServiceImpl implements FollowUpService {
 
 
     @Override
+    @Transactional(readOnly = true)
     public List<FollowUp> getFollowUpsByLeadAndStatus(
             CustomerLead customerLead,
             FollowUpStatus status) {
@@ -257,6 +396,7 @@ public class FollowUpServiceImpl implements FollowUpService {
 
 
     @Override
+    @Transactional(readOnly = true)
     public List<FollowUp> getFollowUpsByLeadAndType(
             CustomerLead customerLead,
             FollowUpType followUpType) {
@@ -274,6 +414,7 @@ public class FollowUpServiceImpl implements FollowUpService {
     // ==========================================================
 
     @Override
+    @Transactional(readOnly = true)
     public List<FollowUp> getFollowUpsByUser(
             User assignedUser) {
 
@@ -285,6 +426,7 @@ public class FollowUpServiceImpl implements FollowUpService {
 
 
     @Override
+    @Transactional(readOnly = true)
     public List<FollowUp> getFollowUpsByUserAndDateRange(
             User assignedUser,
             LocalDateTime start,
@@ -300,6 +442,7 @@ public class FollowUpServiceImpl implements FollowUpService {
 
 
     @Override
+    @Transactional(readOnly = true)
     public List<FollowUp> getFollowUpsByUserAndStatus(
             User assignedUser,
             FollowUpStatus status) {
@@ -313,6 +456,7 @@ public class FollowUpServiceImpl implements FollowUpService {
 
 
     @Override
+    @Transactional(readOnly = true)
     public List<FollowUp> getFollowUpsByUserAndType(
             User assignedUser,
             FollowUpType followUpType) {
@@ -330,6 +474,7 @@ public class FollowUpServiceImpl implements FollowUpService {
     // ==========================================================
 
     @Override
+    @Transactional(readOnly = true)
     public List<FollowUp> getFollowUpsByStatus(
             FollowUpStatus status) {
 
@@ -402,6 +547,7 @@ public class FollowUpServiceImpl implements FollowUpService {
     // ==========================================================
 
     @Override
+    @Transactional(readOnly = true)
     public List<FollowUp> getFollowUpsByType(
             FollowUpType followUpType) {
 
@@ -413,6 +559,7 @@ public class FollowUpServiceImpl implements FollowUpService {
 
 
     @Override
+    @Transactional(readOnly = true)
     public List<FollowUp> getFollowUpsByTypeAndStatus(
             FollowUpType followUpType,
             FollowUpStatus status) {
@@ -430,6 +577,7 @@ public class FollowUpServiceImpl implements FollowUpService {
     // ==========================================================
 
     @Override
+    @Transactional(readOnly = true)
     public List<FollowUp> getFollowUpsBetween(
             LocalDateTime start,
             LocalDateTime end) {
@@ -443,9 +591,11 @@ public class FollowUpServiceImpl implements FollowUpService {
 
 
     @Override
+    @Transactional(readOnly = true)
     public List<FollowUp> getTodaysFollowUps() {
 
-        LocalDate today = LocalDate.now();
+        LocalDate today =
+                LocalDate.now();
 
         LocalDateTime start =
                 today.atStartOfDay();
@@ -462,10 +612,12 @@ public class FollowUpServiceImpl implements FollowUpService {
 
 
     @Override
+    @Transactional(readOnly = true)
     public List<FollowUp> getTodaysFollowUpsByUser(
             User assignedUser) {
 
-        LocalDate today = LocalDate.now();
+        LocalDate today =
+                LocalDate.now();
 
         LocalDateTime start =
                 today.atStartOfDay();
@@ -483,6 +635,7 @@ public class FollowUpServiceImpl implements FollowUpService {
 
 
     @Override
+    @Transactional(readOnly = true)
     public List<FollowUp> getUpcomingFollowUps(
             LocalDateTime currentTime) {
 
@@ -495,6 +648,7 @@ public class FollowUpServiceImpl implements FollowUpService {
 
 
     @Override
+    @Transactional(readOnly = true)
     public List<FollowUp> getUpcomingFollowUpsByUser(
             User assignedUser,
             LocalDateTime currentTime) {
@@ -509,6 +663,7 @@ public class FollowUpServiceImpl implements FollowUpService {
 
 
     @Override
+    @Transactional(readOnly = true)
     public List<FollowUp> getOverdueFollowUps(
             LocalDateTime currentTime) {
 
@@ -521,6 +676,7 @@ public class FollowUpServiceImpl implements FollowUpService {
 
 
     @Override
+    @Transactional(readOnly = true)
     public List<FollowUp> getOverdueFollowUpsByUser(
             User assignedUser,
             LocalDateTime currentTime) {
@@ -539,6 +695,7 @@ public class FollowUpServiceImpl implements FollowUpService {
     // ==========================================================
 
     @Override
+    @Transactional(readOnly = true)
     public long countFollowUpsByStatus(
             FollowUpStatus status) {
 
@@ -548,6 +705,7 @@ public class FollowUpServiceImpl implements FollowUpService {
 
 
     @Override
+    @Transactional(readOnly = true)
     public long countFollowUpsByUserAndStatus(
             User assignedUser,
             FollowUpStatus status) {
@@ -561,6 +719,7 @@ public class FollowUpServiceImpl implements FollowUpService {
 
 
     @Override
+    @Transactional(readOnly = true)
     public long countFollowUpsByLead(
             CustomerLead customerLead) {
 
@@ -572,6 +731,7 @@ public class FollowUpServiceImpl implements FollowUpService {
 
 
     @Override
+    @Transactional(readOnly = true)
     public long countFollowUpsByUser(
             User assignedUser) {
 
@@ -587,6 +747,7 @@ public class FollowUpServiceImpl implements FollowUpService {
     // ==========================================================
 
     @Override
+    @Transactional(readOnly = true)
     public List<FollowUp> getFollowUpsByScheduledDate() {
 
         return followUpRepository
@@ -595,6 +756,7 @@ public class FollowUpServiceImpl implements FollowUpService {
 
 
     @Override
+    @Transactional(readOnly = true)
     public List<FollowUp> getRecentlyCreatedFollowUps() {
 
         return followUpRepository
@@ -603,6 +765,7 @@ public class FollowUpServiceImpl implements FollowUpService {
 
 
     @Override
+    @Transactional(readOnly = true)
     public List<FollowUp> getCompletedFollowUpsByLead(
             CustomerLead customerLead) {
 
@@ -615,6 +778,7 @@ public class FollowUpServiceImpl implements FollowUpService {
 
 
     @Override
+    @Transactional(readOnly = true)
     public List<FollowUp> getCompletedFollowUpsByUser(
             User assignedUser) {
 
@@ -631,6 +795,7 @@ public class FollowUpServiceImpl implements FollowUpService {
     // ==========================================================
 
     @Override
+    @Transactional(readOnly = true)
     public List<FollowUp> getFollowUpsByStatusAndDateRange(
             FollowUpStatus status,
             LocalDateTime start,
@@ -646,6 +811,7 @@ public class FollowUpServiceImpl implements FollowUpService {
 
 
     @Override
+    @Transactional(readOnly = true)
     public List<FollowUp> getFollowUpsByUserStatusAndDateRange(
             User assignedUser,
             FollowUpStatus status,
